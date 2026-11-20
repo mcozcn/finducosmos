@@ -15,8 +15,8 @@ Bu rehber bir kez yapılır. Sıra önemlidir.
 1. Hesabın Creator veya Business olmalı (Ayarlar → Hesap türü).
 2. developers.facebook.com → **Uygulama oluştur** → kullanım: "Diğer" → tür: **Business**.
 3. Uygulamaya **Instagram** ürününü ekle → "API setup with Instagram login".
-4. "Generate access tokens" bölümünde Instagram hesabını ekle ve **token oluştur**. Bu kısa ömürlü değil, 60 günlük uzun ömürlü token'dır; kopyala.
-5. İzinler: `instagram_business_basic`, `instagram_business_content_publish`.
+4. İzinleri (permissions) ekle: `instagram_business_basic`, `instagram_business_content_publish`.
+5. "Generate access tokens" bölümünde Instagram hesabını ekle ve **token oluştur**. Bu kısa ömürlü değil, 60 günlük uzun ömürlü token'dır; kopyala.
 6. IG kullanıcı ID'ni al:
    ```bash
    curl "https://graph.instagram.com/v23.0/me?fields=user_id,username&access_token=TOKEN"
@@ -32,7 +32,10 @@ github.com/settings/personal-access-tokens → **Fine-grained token** → yalnı
 
 Repo → Settings → Secrets and variables → Actions → **New repository secret**: `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `NASA_API_KEY`, `IG_USER_ID`, `IG_ACCESS_TOKEN`, `GH_PAT`.
 
-## 5. Deneme (paylaşmaz)
+## 5. Deneme
+
+Workflow'lar yalnızca varsayılan daldan (`main`) çalıştırılabilir. Önce `feat/daily-carousel` dalını `main`'e birleştir (Claude bunu senin onayınla yapar).
+ (paylaşmaz)
 
 Actions → **daily-post** → Run workflow → `dry_run` işaretli → çalıştır. Bitince **Artifacts** altındaki `carousel-…` zip'ini indir, kartlara bak.
 
@@ -50,7 +53,9 @@ Settings → Secrets and variables → Actions → **Variables** → `ENABLE_SCH
 
 ## Sorun giderme
 
-- Workflow kırmızıysa GitHub e-posta atar; o gün paylaşım yapılmamıştır. Logda hangi adımın düştüğü yazar.
+- Workflow kırmızıysa GitHub e-posta atar; çoğunlukla o gün paylaşım yapılmamıştır. İSTİSNA: logda "Publish outcome unknown" ya da history `::error::` notu varsa gönderi yayında olabilir; tekrar çalıştırmadan önce Instagram'ı kontrol et. Logda hangi adımın düştüğü yazar.
 - "failed fact verification" → içerik kaynakla uyuşmadı; bilerek paylaşılmadı. Elle tekrar çalıştırabilirsin.
+- refresh-ig-token auth hatası → `GH_PAT` süresi dolmuş olabilir, 3. adımı tekrarla.
+- `main` dalında branch protection/ruleset varsa github-actions'ın push etmesine izin ver; yoksa bot commit'i düşer.
 - Token hatası → Actions → refresh-ig-token → Run workflow. O da düşerse 2. adımı tekrarla.
 - Çalıştırma, tarih, `mediaId`, permalink ve history girdisi JSON'unu içeren bir `::error::` notuyla kırmızı bittiyse gönderi Instagram'da YAYINDADIR; yalnızca `history.json` push'u başarısız olmuştur. O JSON girdisini `history.json` dosyasına elle ekleyip commit et; yoksa bir sonraki çalıştırma aynı günü tekrar paylaşabilir.

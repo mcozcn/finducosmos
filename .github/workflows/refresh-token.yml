@@ -7,6 +7,8 @@ permissions:
   contents: read
 jobs:
   refresh:
+    # Cron stays off until the repo variable ENABLE_SCHEDULE is set to "true" (see SETUP.md).
+    if: github.event_name != 'schedule' || vars.ENABLE_SCHEDULE == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
