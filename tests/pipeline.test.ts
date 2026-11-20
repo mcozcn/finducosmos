@@ -56,6 +56,7 @@ describe("runDailyPipeline", () => {
     expect(d.git.commitAndPush).toHaveBeenCalledTimes(2); // images, then history
     const contentJson = JSON.parse(await readFile(join(d.root, "posts/2026-11-21/content.json"), "utf8"));
     expect(contentJson.source.sourceUrl).toBe("https://images.nasa.gov/details/N1");
+    expect(contentJson.verification).toEqual({ supported: true, unsupported: [], attempts: 1 });
     const wait = (d.git.waitForUrl as any).mock;
     expect(wait.calls).toHaveLength(4);
     const publishOrder = (d.instagram!.publishCarousel as any).mock.invocationCallOrder[0];
@@ -72,6 +73,33 @@ describe("runDailyPipeline", () => {
     expect(logged).toContain("::error::");
     expect(logged).toContain("M1");
     errSpy.mockRestore();
+  });
+
+  it("logs 'Publish outcome unknown' and rethrows when publishCarousel fails at the publish stage", async () => {
+    const d = await deps();
+    (d.instagram!.publishCarousel as any).mockRejectedValueOnce(Object.assign(new Error("Instagram publish: HTTP 502 (creation car)"), { stage: "publish" }));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(runDailyPipeline(d)).rejects.toThrow("HTTP 502");
+    const logged = errSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(logged).toContain("::error::Publish outcome unknown for 2026-11-21");
+    errSpy.mockRestore();
+  });
+
+  it("does not log publish-unknown for earlier-stage failures", async () => {
+    const d = await deps();
+    (d.instagram!.publishCarousel as any).mockRejectedValueOnce(new Error("create item failed"));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(runDailyPipeline(d)).rejects.toThrow("create item");
+    expect(errSpy).not.toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it("does not offer an APOD that carries a copyright", async () => {
+    const d = await deps();
+    (d.nasa.apod as any).mockResolvedValue({ date: "2026-11-21", title: "Owned", explanation: "", url: "u", media_type: "image", copyright: "Some Photographer" });
+    await runDailyPipeline(d);
+    const prompt = (d.askJson as any).mock.calls.map((c: any) => c[0]).find((a: any) => Object.keys(a.schema.shape).includes("searchQueryEn")).user;
+    expect(prompt).not.toContain("Owned");
   });
 
   it("skips when today is already published", async () => {

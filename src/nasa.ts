@@ -45,7 +45,7 @@ export function createNasaClient(apiKey: string, fetchFn: typeof fetch = fetch):
     },
     async download(url) {
       return withRetry(async () => {
-        const res = await fetchFn(url);
+        const res = await fetchFn(url, { signal: AbortSignal.timeout(60_000) });
         if (!res.ok) throw new Error(`HTTP ${res.status} downloading image`);
         return Buffer.from(await res.arrayBuffer());
       }, { label: "NASA image download" });

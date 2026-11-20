@@ -30,16 +30,22 @@ export async function writeCarousel(args: {
   return c;
 }
 
+export interface Verification {
+  supported: boolean;
+  unsupported: string[];
+  attempts: number;
+}
+
 export async function writeVerifiedCarousel(args: {
   askJson: AskJson;
   topic: TopicChoice;
   source: SourceMaterial;
-}): Promise<CarouselContent> {
+}): Promise<{ content: CarouselContent; verification: Verification }> {
   let feedback: string[] | undefined;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const content = await writeCarousel({ ...args, feedback });
     const v = await verifyCarousel({ askJson: args.askJson, content, sourceText: args.source.text });
-    if (v.supported) return content;
+    if (v.supported) return { content, verification: { supported: true, unsupported: v.unsupported, attempts: attempt } };
     feedback = v.unsupported;
   }
   throw new Error(`Carousel failed fact verification twice: ${feedback?.join(" | ")}`);

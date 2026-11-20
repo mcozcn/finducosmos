@@ -48,6 +48,38 @@ describe("publishCarousel", () => {
   });
 });
 
+describe("publish failures", () => {
+  function publishFake(publish: () => Response, status = "FINISHED") {
+    const calls: Call[] = [];
+    const fn = (async (input: string | URL, init?: RequestInit) => {
+      const c: Call = { method: init?.method ?? "GET", url: new URL(String(input)), body: init?.body ? new URLSearchParams(String(init.body)) : null };
+      calls.push(c);
+      const p = c.url.pathname;
+      if (p.endsWith("/U1/media_publish")) return publish();
+      const json = p.endsWith("/car") ? { status_code: status } : { id: c.body?.get("media_type") === "CAROUSEL" ? "car" : "c" };
+      return new Response(JSON.stringify(json), { status: 200 });
+    }) as typeof fetch;
+    return { fn, calls };
+  }
+
+  it("tags a non-JSON 502 from media_publish with stage publish and does not retry it", async () => {
+    const { fn, calls } = publishFake(() => new Response("<html>bad gateway</html>", { status: 502 }));
+    const ig = createInstagramClient({ userId: "U1", token: "T", fetchFn: fn, pollMs: 1 });
+    const err = await ig.publishCarousel(["a", "b"], "c").catch((e) => e);
+    expect(err.stage).toBe("publish");
+    expect(err.message).toContain("car");
+    expect(err.message).toContain("HTTP 502");
+    expect(calls.filter((c) => c.url.pathname.endsWith("/media_publish"))).toHaveLength(1);
+  });
+
+  it("does not retry an ERROR container status", async () => {
+    const { fn, calls } = publishFake(() => new Response("{}"), "ERROR");
+    const ig = createInstagramClient({ userId: "U1", token: "T", fetchFn: fn, pollMs: 1 });
+    await expect(ig.publishCarousel(["a", "b"], "c")).rejects.toThrow("ERROR");
+    expect(calls.filter((c) => c.url.pathname.endsWith("/car"))).toHaveLength(1);
+  });
+});
+
 describe("refreshToken", () => {
   it("calls refresh_access_token and returns the new token", async () => {
     const { fn, calls } = fakeFetch(() => ({ access_token: "NEW", expires_in: 5184000 }));

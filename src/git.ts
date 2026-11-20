@@ -32,7 +32,7 @@ export function rawUrl(repo: string, sha: string, path: string): string {
 /** raw.githubusercontent.com can lag a few seconds after a push. */
 export async function waitForUrl(url: string, fetchFn: typeof fetch = fetch, tries = 10, delayMs = 3000): Promise<void> {
   for (let i = 0; i < tries; i++) {
-    const res = await fetchFn(url, { method: "HEAD" }).catch(() => null);
+    const res = await fetchFn(url, { method: "HEAD", signal: AbortSignal.timeout(15_000) }).catch(() => null);
     if (res?.ok) return;
     await new Promise((r) => setTimeout(r, delayMs));
   }

@@ -18,14 +18,21 @@ export function createInstagramClient(opts: {
   const pollMs = opts.pollMs ?? 5000;
   const maxPolls = opts.maxPolls ?? 24; // ~2 minutes
 
-  async function call<T>(method: "GET" | "POST", url: string, params: Record<string, string>, label: string, attempts = 3): Promise<T> {
+  async function call<T>(method: "GET" | "POST", url: string, params: Record<string, string>, label: string, attempts = 3, timeoutMs = 30_000): Promise<T> {
     return withRetry(async () => {
       const all = { ...params, access_token: opts.token };
+      const signal = AbortSignal.timeout(timeoutMs);
       const res =
         method === "GET"
-          ? await fetchFn(`${url}?${new URLSearchParams(all)}`)
-          : await fetchFn(url, { method: "POST", body: new URLSearchParams(all) });
-      const json = (await res.json()) as T & { error?: { message?: string } };
+          ? await fetchFn(`${url}?${new URLSearchParams(all)}`, { signal })
+          : await fetchFn(url, { method: "POST", body: new URLSearchParams(all), signal });
+      const text = await res.text();
+      let json: T & { error?: { message?: string } };
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(`Instagram ${label}: HTTP ${res.status}`);
+      }
       if (!res.ok || json.error) throw new Error(`Instagram ${label}: ${json.error?.message ?? `HTTP ${res.status}`}`);
       return json;
     }, { label: `Instagram ${label}`, baseMs: 2000, attempts });
@@ -52,7 +59,13 @@ export function createInstagramClient(opts: {
       }
 
       // Single attempt: retrying a publish that succeeded but timed out would double post.
-      const { id: mediaId } = await call<{ id: string }>("POST", `${base}/${opts.userId}/media_publish`, { creation_id: carouselId }, "publish", 1);
+      let mediaId: string;
+      try {
+        ({ id: mediaId } = await call<{ id: string }>("POST", `${base}/${opts.userId}/media_publish`, { creation_id: carouselId }, "publish", 1, 60_000));
+      } catch (err) {
+        // Outcome is unknown (the post may be live); tag it so the pipeline can tell the operator.
+        throw Object.assign(new Error(`${(err as Error).message} (creation ${carouselId})`), { stage: "publish", creationId: carouselId });
+      }
       let permalink: string | undefined;
       try {
         ({ permalink } = await call<{ permalink?: string }>("GET", `${base}/${mediaId}`, { fields: "permalink" }, "permalink"));

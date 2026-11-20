@@ -40,7 +40,7 @@ export async function runDailyPipeline(d: PipelineDeps): Promise<{ status: "skip
   if (isPublished(history, date)) return { status: "skipped", date, files: [] };
 
   const apod = await d.nasa.apod().catch(() => null);
-  const imageApod = apod && apod.media_type === "image" ? apod : null;
+  const imageApod = apod && apod.media_type === "image" && !apod.copyright ? apod : null;
 
   let topic: TopicChoice | null = null;
   let source: SourceMaterial | null = null;
@@ -57,7 +57,7 @@ export async function runDailyPipeline(d: PipelineDeps): Promise<{ status: "skip
 
   const aiImage = source.image === null;
   const image = source.image ?? (await generateFallbackImage(topic, source.text, d.imageModel));
-  const content = await writeVerifiedCarousel({ askJson: d.askJson, topic, source });
+  const { content, verification } = await writeVerifiedCarousel({ askJson: d.askJson, topic, source });
   const caption = buildCaption(content, { credit: source.credit, sourceUrl: source.sourceUrl, aiImage });
 
   const relDir = `posts/${date}`;
@@ -66,7 +66,7 @@ export async function runDailyPipeline(d: PipelineDeps): Promise<{ status: "skip
   const files = await d.render({ content, category: topic.category, credit: source.credit, image, aiImage }, outDir);
   await writeFile(
     join(outDir, "content.json"),
-    JSON.stringify({ date, topic, source: { text: source.text, sourceUrl: source.sourceUrl, credit: source.credit }, aiImage, content, caption }, null, 2) + "\n",
+    JSON.stringify({ date, topic, source: { text: source.text, sourceUrl: source.sourceUrl, credit: source.credit }, aiImage, content, verification, caption }, null, 2) + "\n",
   );
 
   if (d.dryRun) return { status: "dry_run", date, files };
@@ -77,7 +77,17 @@ export async function runDailyPipeline(d: PipelineDeps): Promise<{ status: "skip
   const urls = relFiles.map((p) => d.git.rawUrl(d.repo, sha, p));
   for (const u of urls) await d.git.waitForUrl(u);
 
-  const { mediaId, permalink } = await d.instagram.publishCarousel(urls, caption);
+  let published: { mediaId: string; permalink?: string };
+  try {
+    published = await d.instagram.publishCarousel(urls, caption);
+  } catch (err) {
+    const e = err as { stage?: string; creationId?: string };
+    if (e.stage === "publish") {
+      console.error(`::error::Publish outcome unknown for ${date} — check Instagram before re-running (creation ${e.creationId ?? "unknown"})`);
+    }
+    throw err;
+  }
+  const { mediaId, permalink } = published;
   const entry = { date, category: topic.category, title: topic.titleTr, status: "published" as const, mediaId, ...(permalink ? { permalink } : {}) };
   history.push(entry);
   try {

@@ -33,7 +33,9 @@ describe("writeVerifiedCarousel", () => {
     const ask = vi.fn()
       .mockResolvedValueOnce(good)
       .mockResolvedValueOnce({ supported: true, unsupported: [] });
-    await expect(writeVerifiedCarousel({ askJson: ask as any, topic, source })).resolves.toEqual(good);
+    await expect(writeVerifiedCarousel({ askJson: ask as any, topic, source })).resolves.toEqual({
+      content: good, verification: { supported: true, unsupported: [], attempts: 1 },
+    });
     expect(ask).toHaveBeenCalledTimes(2);
   });
 
@@ -43,7 +45,8 @@ describe("writeVerifiedCarousel", () => {
       .mockResolvedValueOnce({ supported: false, unsupported: ["Buz Satürn'e yağıyor."] })
       .mockResolvedValueOnce(good)
       .mockResolvedValueOnce({ supported: true, unsupported: [] });
-    await writeVerifiedCarousel({ askJson: ask as any, topic, source });
+    const r = await writeVerifiedCarousel({ askJson: ask as any, topic, source });
+    expect(r.verification).toEqual({ supported: true, unsupported: [], attempts: 2 });
     expect((ask.mock.calls[2][0] as any).user).toContain("Buz Satürn'e yağıyor.");
   });
 
