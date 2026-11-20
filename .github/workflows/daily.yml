@@ -1,0 +1,43 @@
+name: daily-post
+on:
+  schedule:
+    - cron: "0 16 * * *" # 19:00 Europe/Istanbul
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Render only, do not publish"
+        type: boolean
+        default: true
+permissions:
+  contents: write
+concurrency:
+  group: daily-post
+  cancel-in-progress: false
+jobs:
+  post:
+    # Cron stays off until the repo variable ENABLE_SCHEDULE is set to "true" (see SETUP.md).
+    if: github.event_name != 'schedule' || vars.ENABLE_SCHEDULE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run post
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: carousel-${{ github.run_id }}
+          path: posts/
+          if-no-files-found: ignore
