@@ -78,8 +78,15 @@ export async function runDailyPipeline(d: PipelineDeps): Promise<{ status: "skip
   for (const u of urls) await d.git.waitForUrl(u);
 
   const { mediaId, permalink } = await d.instagram.publishCarousel(urls, caption);
-  history.push({ date, category: topic.category, title: topic.titleTr, status: "published", mediaId, ...(permalink ? { permalink } : {}) });
-  await saveHistory(historyPath, history);
-  d.git.commitAndPush(["history.json"], `history: ${date} published`);
+  const entry = { date, category: topic.category, title: topic.titleTr, status: "published" as const, mediaId, ...(permalink ? { permalink } : {}) };
+  history.push(entry);
+  try {
+    await saveHistory(historyPath, history);
+    d.git.commitAndPush(["history.json"], `history: ${date} published`);
+  } catch (err) {
+    // The post is live but unrecorded: a re-run would double-post, so surface what to add by hand.
+    console.error(`::error::Published ${date} (mediaId ${mediaId}, ${permalink ?? "no permalink"}) but history push failed; add this entry to history.json by hand: ${JSON.stringify(entry)}`);
+    throw err;
+  }
   return { status: "published", date, files };
 }

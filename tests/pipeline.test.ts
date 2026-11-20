@@ -56,6 +56,22 @@ describe("runDailyPipeline", () => {
     expect(d.git.commitAndPush).toHaveBeenCalledTimes(2); // images, then history
     const contentJson = JSON.parse(await readFile(join(d.root, "posts/2026-11-21/content.json"), "utf8"));
     expect(contentJson.source.sourceUrl).toBe("https://images.nasa.gov/details/N1");
+    const wait = (d.git.waitForUrl as any).mock;
+    expect(wait.calls).toHaveLength(4);
+    const publishOrder = (d.instagram!.publishCarousel as any).mock.invocationCallOrder[0];
+    for (const o of wait.invocationCallOrder) expect(o).toBeLessThan(publishOrder);
+  });
+
+  it("logs a ::error:: annotation and rethrows when the history push fails after publishing", async () => {
+    const d = await deps();
+    (d.git.commitAndPush as any).mockReturnValueOnce("abc123").mockImplementationOnce(() => { throw new Error("push rejected"); });
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(runDailyPipeline(d)).rejects.toThrow("push rejected");
+    expect(d.instagram!.publishCarousel).toHaveBeenCalledTimes(1);
+    const logged = errSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(logged).toContain("::error::");
+    expect(logged).toContain("M1");
+    errSpy.mockRestore();
   });
 
   it("skips when today is already published", async () => {
@@ -63,6 +79,7 @@ describe("runDailyPipeline", () => {
     await writeFile(join(d.root, "history.json"), JSON.stringify([{ date: "2026-11-21", category: "apod", title: "x", status: "published", mediaId: "M0" }]));
     const r = await runDailyPipeline(d);
     expect(r.status).toBe("skipped");
+    expect(d.git.commitAndPush).not.toHaveBeenCalled();
     expect(d.instagram!.publishCarousel).not.toHaveBeenCalled();
   });
 
@@ -87,5 +104,8 @@ describe("runDailyPipeline", () => {
     const d = await deps();
     (d.nasa.search as any).mockResolvedValue([]);
     await expect(runDailyPipeline(d)).rejects.toThrow("No NASA source found after 3 topics");
+    expect(d.nasa.search).toHaveBeenCalledTimes(3);
+    const topicPrompts = (d.askJson as any).mock.calls.map((c: any) => c[0]).filter((a: any) => Object.keys(a.schema.shape).includes("searchQueryEn")).map((a: any) => a.user);
+    expect(topicPrompts[1]).toContain("Satürn 1");
   });
 });
