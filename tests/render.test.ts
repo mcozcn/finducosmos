@@ -39,6 +39,14 @@ describe("editorial html", () => {
   it("info slide uses roman numerals", () => {
     expect(slideHtml("info", input, 2, 4)).toContain("ii.");
   });
+
+  it("credit footers use a text label, not an emoji", () => {
+    for (const kind of ["info", "closing"] as const) {
+      const h = slideHtml(kind, input, 1, 4);
+      expect(h).toContain("Görsel: NASA/JPL-Caltech");
+      expect(h).not.toContain("📷");
+    }
+  });
 });
 
 describe("renderCarousel", () => {

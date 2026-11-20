@@ -80,7 +80,7 @@ export function slideHtml(kind: "cover" | "info" | "closing", input: RenderInput
       <div class="body">${emphasize(slide.body)}</div>
       <div class="strip"></div>
       <div class="rule"></div>
-      <div class="foot"><span>📷 ${credit}</span><span>→</span></div>`);
+      <div class="foot"><span>Görsel: ${credit}</span><span>→</span></div>`);
   }
 
   return page(`
@@ -88,5 +88,5 @@ export function slideHtml(kind: "cover" | "info" | "closing", input: RenderInput
     <div class="close-title">Kaydet &amp; <em>takip et</em></div>
     <div class="close-sub">Her gün evrenden bir hikâye.<br>${escapeHtml(ACCOUNT_HANDLE)}</div>
     <div class="rule"></div>
-    <div class="foot"><span>📷 ${credit}</span><span>Kaynak: NASA</span></div>`);
+    <div class="foot"><span>Görsel: ${credit}</span><span>Kaynak: NASA</span></div>`);
 }
