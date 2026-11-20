@@ -5,13 +5,23 @@ export const CORE_HASHTAGS = ["uzay", "astronomi", "space", "nasa", "evren"];
 const MAX_CAPTION = 2200;
 const MAX_TAGS = 30;
 
-const normTag = (t: string) => t.replace(/^#+/, "").replace(/\s+/g, "").toLocaleLowerCase("tr");
+const normTag = (t: string) => t.replace(/[^\p{L}\p{N}_]/gu, "");
+
+function dedupeTags(tags: string[]): string[] {
+  const seen = new Set<string>();
+  return tags.filter((t) => {
+    const key = t.toLocaleLowerCase("tr");
+    if (!t || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 export function buildCaption(
   content: CarouselContent,
   meta: { credit: string; sourceUrl: string; aiImage: boolean },
 ): string {
-  const tags = [...new Set([...CORE_HASHTAGS, ...content.hashtags].map(normTag).filter(Boolean))].slice(0, MAX_TAGS);
+  const tags = dedupeTags([...CORE_HASHTAGS, ...content.hashtags].map(normTag)).slice(0, MAX_TAGS);
   const footer = [
     "",
     `📷 ${meta.credit}`,

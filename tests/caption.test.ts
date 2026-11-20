@@ -10,7 +10,7 @@ describe("buildCaption", () => {
     expect(c.startsWith("Gövde metni.")).toBe(true);
     expect(c).toContain("📷 NASA/JPL-Caltech");
     expect(c).toContain("Kaynak: https://images.nasa.gov/details/X");
-    expect(c).toContain("#satürn");
+    expect(c).toContain("#Satürn");
     expect(c.match(/#uzay\b/g)).toHaveLength(1);
     expect(c).not.toContain("AI");
   });
@@ -25,6 +25,15 @@ describe("buildCaption", () => {
     expect(c.length).toBeLessThanOrEqual(2200);
     expect((c.match(/#\S+/g) ?? []).length).toBeLessThanOrEqual(30);
     expect(c).toContain("📷 NASA"); // credit survives truncation
+  });
+
+  it("keeps tag case, strips punctuation, dedupes case-insensitively", () => {
+    const c = buildCaption({ ...base, hashtags: ["ISS", "black-hole", "#Satürn", "satürn"] }, { credit: "NASA", sourceUrl: "u", aiImage: false });
+    expect(c).toContain("#ISS");
+    expect(c).not.toContain("#ıss");
+    expect(c).toContain("#blackhole");
+    expect(c.match(/#satürn/gi)).toHaveLength(1);
+    expect(c).toContain("#Satürn");
   });
 
   it("always includes the core hashtags", () => {
