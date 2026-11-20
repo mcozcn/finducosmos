@@ -32,10 +32,9 @@ github.com/settings/personal-access-tokens → **Fine-grained token** → yalnı
 
 Repo → Settings → Secrets and variables → Actions → **New repository secret**: `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `NASA_API_KEY`, `IG_USER_ID`, `IG_ACCESS_TOKEN`, `GH_PAT`.
 
-## 5. Deneme
+## 5. Deneme (paylaşmaz)
 
 Workflow'lar yalnızca varsayılan daldan (`main`) çalıştırılabilir. Önce `feat/daily-carousel` dalını `main`'e birleştir (Claude bunu senin onayınla yapar).
- (paylaşmaz)
 
 Actions → **daily-post** → Run workflow → `dry_run` işaretli → çalıştır. Bitince **Artifacts** altındaki `carousel-…` zip'ini indir, kartlara bak.
 
