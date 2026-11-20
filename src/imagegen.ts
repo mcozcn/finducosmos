@@ -13,7 +13,7 @@ export function createGeminiImageModel(apiKey: string): ImageModel {
         const res = await ai.models.generateContent({
           model: GEMINI_IMAGE_MODEL,
           contents: prompt,
-          config: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "4:5" } },
+          config: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "3:4" } },
         });
         const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
         if (!part?.inlineData?.data) throw new Error("Gemini returned no image");
@@ -27,7 +27,7 @@ export async function generateFallbackImage(topic: TopicChoice, sourceText: stri
     `Photorealistic astronomy image of: ${topic.searchQueryEn}.`,
     `Scientific context: ${sourceText.slice(0, 600)}`,
     "Style: deep space, realistic lighting like a NASA telescope image, dark background, rich detail.",
-    "Composition: vertical 4:5, main subject in the upper-middle, darker lower third for overlaid text.",
+    "Composition: vertical 3:4, main subject in the upper-middle, darker lower third for overlaid text.",
     "Absolutely no text, letters, logos, watermarks or borders.",
   ].join("\n");
   return model.generate(prompt);

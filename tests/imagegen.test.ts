@@ -13,6 +13,6 @@ describe("generateFallbackImage", () => {
     const prompt = generate.mock.calls[0][0] as string;
     expect(prompt).toContain("black hole event horizon");
     expect(prompt).toContain("no text");
-    expect(prompt).toContain("4:5");
+    expect(prompt).toContain("3:4");
   });
 });
