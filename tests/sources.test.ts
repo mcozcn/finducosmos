@@ -63,3 +63,62 @@ describe("findSource", () => {
     expect(await findSource(topic(), { nasa, apod: null, sizeOf })).toBeNull();
   });
 });
+
+describe("findSource resilience", () => {
+  const longDesc = "Saturn's rings are made mostly of water ice particles. ".repeat(5);
+  const item = (id: string) => ({
+    nasaId: id, title: id, description: longDesc, center: "JPL",
+    credit: `credit ${id}`, assetManifestUrl: `https://x/${id}.json`,
+  });
+  const twoItems = vi.fn(async () => [item("A"), item("B")]);
+  const assets = vi.fn(async (m: string) => [m.includes("/A.") ? "https://x/A~orig.jpg" : "https://x/B~orig.jpg"]);
+
+  it("moves on to the next candidate when one download throws", async () => {
+    const download = vi.fn(async (u: string) => {
+      if (u.includes("A~")) throw new Error("HTTP 404");
+      return bigJpeg;
+    });
+    const nasa = fakeNasa({ search: twoItems, assetUrls: assets, download });
+    const s = await findSource(topic(), { nasa, apod: null, sizeOf });
+    expect(s?.sourceUrl).toBe("https://images.nasa.gov/details/B");
+    expect(s?.image).toBe(bigJpeg);
+  });
+
+  it("returns the first candidate's text with image null when every download throws", async () => {
+    const download = vi.fn(async () => { throw new Error("truncated body"); });
+    const nasa = fakeNasa({ search: twoItems, assetUrls: assets, download });
+    const s = await findSource(topic(), { nasa, apod: null, sizeOf });
+    expect(s?.sourceUrl).toBe("https://images.nasa.gov/details/A");
+    expect(s?.text).toContain("Saturn's rings");
+    expect(s?.image).toBeNull();
+  });
+
+  it("treats a sizeOf that throws as not big enough and moves on", async () => {
+    const throwingSize = (b: Buffer) => {
+      if (b === smallJpeg) throw new Error("unrecognised image");
+      return sizeOf(b);
+    };
+    const download = vi.fn(async (u: string) => (u.includes("A~") ? smallJpeg : bigJpeg));
+    const nasa = fakeNasa({ search: twoItems, assetUrls: assets, download });
+    const s = await findSource(topic(), { nasa, apod: null, sizeOf: throwingSize });
+    expect(s?.sourceUrl).toBe("https://images.nasa.gov/details/B");
+    expect(s?.image).toBe(bigJpeg);
+  });
+
+  it("keeps APOD text with image null when the APOD download throws", async () => {
+    const nasa = fakeNasa({ download: vi.fn(async () => { throw new Error("HTTP 500"); }) });
+    const s = await findSource(topic({ useApod: true, category: "apod" }), { nasa, apod, sizeOf });
+    expect(s?.text).toContain("stellar nursery");
+    expect(s?.image).toBeNull();
+  });
+
+  it("skips a video APOD and uses the NASA Image Library search path", async () => {
+    const nasa = fakeNasa();
+    const videoApod = { ...apod, media_type: "video" };
+    const s = await findSource(topic({ useApod: true, category: "apod" }), { nasa, apod: videoApod, sizeOf });
+    expect(nasa.download).not.toHaveBeenCalledWith(apod.hdurl);
+    expect(nasa.download).not.toHaveBeenCalledWith(apod.url);
+    expect(nasa.search).toHaveBeenCalledWith("saturn rings");
+    expect(s?.sourceUrl).toBe("https://images.nasa.gov/details/PIA21046");
+  });
+});

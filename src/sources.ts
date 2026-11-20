@@ -13,8 +13,12 @@ export function stripHtml(s: string): string {
 }
 
 function bigEnough(buf: Buffer, sizeOf: SizeOf): boolean {
-  const { width = 0, height = 0 } = sizeOf(buf);
-  return Math.min(width, height) >= MIN_SHORT_EDGE;
+  try {
+    const { width = 0, height = 0 } = sizeOf(buf);
+    return Math.min(width, height) >= MIN_SHORT_EDGE;
+  } catch {
+    return false; // unrecognised image data counts as not big enough
+  }
 }
 
 function apodPageUrl(date: string): string {
@@ -28,14 +32,20 @@ export async function findSource(
 ): Promise<SourceMaterial | null> {
   const sizeOf = deps.sizeOf ?? ((b: Buffer) => imageSize(b));
 
-  if (topic.useApod && deps.apod) {
+  if (topic.useApod && deps.apod?.media_type === "image") {
     const a = deps.apod;
-    const img = await deps.nasa.download(a.hdurl ?? a.url);
+    let img: Buffer | null = null;
+    try {
+      const downloaded = await deps.nasa.download(a.hdurl ?? a.url);
+      img = bigEnough(downloaded, sizeOf) ? downloaded : null;
+    } catch {
+      img = null; // keep the APOD text even when its image cannot be fetched
+    }
     return {
       text: stripHtml(a.explanation),
       sourceUrl: apodPageUrl(a.date),
       credit: a.copyright ? `© ${a.copyright.replace(/\s+/g, " ").trim()}` : "NASA APOD",
-      image: bigEnough(img, sizeOf) ? img : null,
+      image: img,
     };
   }
 
@@ -52,11 +62,15 @@ export async function findSource(
   });
 
   for (const it of items) {
-    const urls = await deps.nasa.assetUrls(it.assetManifestUrl);
-    const best = urls.find((u) => u.includes("~orig.jpg")) ?? urls.find((u) => u.includes("~large.jpg"));
-    if (!best) continue;
-    const img = await deps.nasa.download(best);
-    if (bigEnough(img, sizeOf)) return toSource(it, img);
+    try {
+      const urls = await deps.nasa.assetUrls(it.assetManifestUrl);
+      const best = urls.find((u) => u.includes("~orig.jpg")) ?? urls.find((u) => u.includes("~large.jpg"));
+      if (!best) continue;
+      const img = await deps.nasa.download(best);
+      if (bigEnough(img, sizeOf)) return toSource(it, img);
+    } catch {
+      // This candidate's manifest or image is unusable; try the next one.
+    }
   }
   return toSource(items[0], null);
 }
