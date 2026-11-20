@@ -40,6 +40,12 @@ describe("editorial html", () => {
     expect(slideHtml("info", input, 2, 4)).toContain("ii.");
   });
 
+  it("long info bodies use the smaller body class", () => {
+    const long = { ...input, content: { ...input.content, slides: [{ heading: "H", body: "a".repeat(180) }] } };
+    expect(slideHtml("info", long, 1, 3)).toContain('class="body long"');
+    expect(slideHtml("info", input, 1, 4)).toContain('class="body"');
+  });
+
   it("credit footers use a text label, not an emoji", () => {
     for (const kind of ["info", "closing"] as const) {
       const h = slideHtml(kind, input, 1, 4);

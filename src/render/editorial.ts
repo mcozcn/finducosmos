@@ -9,6 +9,8 @@ export interface RenderInput {
   aiImage: boolean;
 }
 
+/** Bodies longer than this step down from 64px to 54px so five lines still fit. */
+const BODY_LONG_CHARS = 120;
 const ROMAN = ["i", "ii", "iii", "iv", "v"];
 
 export function escapeHtml(s: string): string {
@@ -38,17 +40,19 @@ const STYLE = `
   .shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(3,4,10,.94) 0%,rgba(3,4,10,.55) 38%,rgba(3,4,10,0) 70%)}
   .top{position:absolute;top:56px;left:64px;right:64px;display:flex;justify-content:space-between;
        font:500 28px/1 'Inter Tight';letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.86)}
-  .badge{position:absolute;top:112px;right:64px;font:500 24px/1 'Inter Tight';letter-spacing:.12em;
+  .badge{position:absolute;top:112px;right:64px;font:500 26px/1 'Inter Tight';letter-spacing:.12em;
          text-transform:uppercase;padding:12px 18px;border:1.5px solid rgba(255,255,255,.6);border-radius:999px;background:rgba(3,4,10,.5)}
   h1{position:absolute;left:64px;right:64px;bottom:196px;font:400 118px/1.0 'Instrument Serif';letter-spacing:-.01em}
   em{font-style:italic;color:#f1d7a6}
   .rule{position:absolute;left:64px;right:64px;bottom:140px;border-top:2px solid rgba(255,255,255,.4)}
   .foot{position:absolute;left:64px;right:64px;bottom:72px;display:flex;justify-content:space-between;
         font:400 28px/1 'Inter Tight';color:rgba(255,255,255,.82)}
-  .num{position:absolute;top:168px;left:64px;font:italic 400 200px/1 'Instrument Serif';color:#f1d7a6}
-  .heading{position:absolute;top:410px;left:64px;right:80px;font:500 30px/1.2 'Inter Tight';letter-spacing:.14em;text-transform:uppercase;color:#f1d7a6}
-  .body{position:absolute;top:470px;left:64px;right:80px;font:400 64px/1.28 'Instrument Serif'}
-  .strip{position:absolute;left:64px;right:64px;bottom:196px;height:300px;border-radius:8px;background:center/cover no-repeat url("bg.jpg")}
+  .info{position:absolute;top:150px;left:64px;right:64px;bottom:196px;display:flex;flex-direction:column;gap:24px}
+  .num{font:italic 400 170px/1 'Instrument Serif';color:#f1d7a6}
+  .heading{font:500 30px/1.2 'Inter Tight';letter-spacing:.14em;text-transform:uppercase;color:#f1d7a6}
+  .body{font:400 64px/1.28 'Instrument Serif';padding-right:16px}
+  .body.long{font-size:54px}
+  .strip{flex:1;min-height:160px;border-radius:8px;background:center/cover no-repeat url("bg.jpg")}
   .close-title{position:absolute;left:64px;right:64px;top:420px;font:400 132px/1.0 'Instrument Serif'}
   .close-sub{position:absolute;left:64px;right:64px;top:720px;font:400 40px/1.4 'Inter Tight';color:rgba(255,255,255,.86)}
 `;
@@ -75,10 +79,12 @@ export function slideHtml(kind: "cover" | "info" | "closing", input: RenderInput
     const slide = input.content.slides[index - 1];
     return page(`
       ${top}
-      <div class="num">${ROMAN[index - 1]}.</div>
-      ${slide.heading ? `<div class="heading">${escapeHtml(slide.heading)}</div>` : ""}
-      <div class="body">${emphasize(slide.body)}</div>
-      <div class="strip"></div>
+      <div class="info">
+        <div class="num">${ROMAN[index - 1]}.</div>
+        ${slide.heading ? `<div class="heading">${escapeHtml(slide.heading)}</div>` : ""}
+        <div class="body${slide.body.length > BODY_LONG_CHARS ? " long" : ""}">${emphasize(slide.body)}</div>
+        <div class="strip"></div>
+      </div>
       <div class="rule"></div>
       <div class="foot"><span>Görsel: ${credit}</span><span>→</span></div>`);
   }
