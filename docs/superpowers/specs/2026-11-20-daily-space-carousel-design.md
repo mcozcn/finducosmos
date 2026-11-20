@@ -15,7 +15,7 @@ Türkçe bir carousel (3–5 slayt) üretip Instagram'a paylaşan bir sistem.
 - İçerikteki her bilgi bir NASA/ESA kaynak metnine dayanır; dayanmayan içerik yayınlanmaz.
 - Aynı konu son 60 paylaşımda tekrar etmez.
 - Hata durumunda o gün paylaşım yapılmaz ve kullanıcı e-posta ile haberdar olur.
-- Aylık maliyet ~2 $ altında (Claude); diğer servisler ücretsiz katmanda.
+- Aylık maliyet ~5 $ altında (Claude Opus 5.5, günde 3–4 çağrı); diğer servisler ücretsiz katmanda.
 
 **Kapsam dışı:** Reels/video, story, yorum yanıtlama, analitik paneli, çoklu hesap.
 
@@ -69,7 +69,8 @@ Her modül tek iş yapar, saf girdi/çıktı tipleriyle (`src/types.ts`) konuşu
 - AI görseli kullanıldıysa kart köşesinde "AI görseli" etiketi ve caption'da not bulunur.
 
 ### Metin yazımı
-- Model: Claude Sonnet 5.5 (`claude-sonnet-5-5`), yapılandırılmış JSON çıktı.
+- Model: Claude Opus 5.5 (`claude-opus-5-5`, effort `medium`), yapılandırılmış JSON çıktı, sunucu tarafı ret-yedeği açık.
+  Maliyet düşürmek istenirse `CLAUDE_MODEL` sabiti `claude-sonnet-5-5` yapılabilir.
 - Sistem talimatı: *"Yalnızca verilen kaynak metindeki bilgileri kullan. Metinde olmayan sayı,
   tarih veya iddia ekleme."*
 - Çıktı şeması:
@@ -91,7 +92,7 @@ Her modül tek iş yapar, saf girdi/çıktı tipleriyle (`src/types.ts`) konuşu
 
 - Boyut 1080×1350 (4:5), JPEG (kalite ~90, < 8 MB).
 - Fontlar: **Instrument Serif** (başlık, italik vurgu) + **Inter Tight** (etiketler, alt bilgi).
-  Fontlar repoya gömülür (Google Fonts'tan indirilen woff2), render ağdan bağımsızdır.
+  Fontlar `@fontsource/*` npm paketlerinden yerel dosya olarak yüklenir (Türkçe için latin-ext dahil); render ağdan bağımsızdır.
 - Renk: koyu zemin `#0b0c14`, beyaz metin, vurgu sıcak krem `#f1d7a6`.
 - **Kapak:** tam boy fotoğraf, alttan koyulaşan gradyan, büyük serif başlık (bir kelime italik
   krem vurgu), ince ayraç çizgisi, alt satırda kategori + "kaydır →", üstte `finducosmos` ve
@@ -100,7 +101,7 @@ Her modül tek iş yapar, saf girdi/çıktı tipleriyle (`src/types.ts`) konuşu
   altta fotoğraftan kırpılmış şerit, alt satırda kaynak.
 - **Kapanış:** "Kaydet & takip et" + @hesap + görsel telifi.
 - Gerçek boyutta okunabilirlik: gövde ≥ 40 px, alt bilgi ≥ 26 px; metin–zemin kontrastı WCAG AA.
-- Şablon: `templates/editorial/*.html` + tek CSS; veriler JSON'dan doldurulur.
+- Şablon: `src/render/editorial.ts` içinde slayt türü başına HTML üreten fonksiyonlar + tek CSS.
 
 ## 5. Yayınlama
 
@@ -116,7 +117,8 @@ Her modül tek iş yapar, saf girdi/çıktı tipleriyle (`src/types.ts`) konuşu
 
 ## 6. Durum ve geçmiş
 
-- `history.json`: `[{ date, category, title, permalink?, media_id?, status: "published"|"failed"|"dry_run" }]`.
+- `history.json`: yalnızca yayınlanan günler: `[{ date, category, title, status: "published", mediaId, permalink? }]`.
+  Hatalı günler ve dry-run'lar kaydedilmez (hata = kırmızı workflow + artifact).
 - `posts/YYYY-MM-DD/`: JPEG'ler + `content.json` (konu, kaynaklar, metinler, doğrulama sonucu).
 - Bot commit'leri `github-actions[bot]` kimliğiyle; günlük commit zamanlanmış workflow'un
   60 gün hareketsizlikte devre dışı kalmasını da önler.
@@ -144,7 +146,7 @@ Her modül tek iş yapar, saf girdi/çıktı tipleriyle (`src/types.ts`) konuşu
 2. Kullanıcı `SETUP.md`'yi izleyip secret'ları ekler.
 3. Kullanıcı onayıyla repo public yapılır.
 4. Kullanıcı onayıyla ilk paylaşım elle tetiklenir (dry_run=false).
-5. Sonra cron etkinleşir.
+5. Sonra cron etkinleşir: repo değişkeni `ENABLE_SCHEDULE=true` (o zamana dek zamanlanmış çalışma atlanır).
 
 ## 10. Kurulum rehberi (`SETUP.md`)
 
