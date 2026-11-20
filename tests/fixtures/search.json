@@ -1,0 +1,20 @@
+{
+  "collection": {
+    "items": [
+      {
+        "href": "https://images-assets.nasa.gov/image/short/collection.json",
+        "data": [{ "nasa_id": "short", "title": "Short", "description": "Too short.", "center": "JPL" }]
+      },
+      {
+        "href": "https://images-assets.nasa.gov/image/PIA21046/collection.json",
+        "data": [{
+          "nasa_id": "PIA21046",
+          "title": "Saturn's Rings",
+          "description": "<p>Saturn's rings are made mostly of water ice particles ranging in size from tiny grains to chunks as big as mountains. Cassini observations show that material from the rings is falling into Saturn as a rain of ice, which suggests the rings are slowly disappearing over time.</p>",
+          "center": "JPL",
+          "secondary_creator": "NASA/JPL-Caltech/Space Science Institute"
+        }]
+      }
+    ]
+  }
+}
